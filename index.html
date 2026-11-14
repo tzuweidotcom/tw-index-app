@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>台股風險指標</title>
+<meta name="description" content="台股與國際風險指標 5 日變化圖，資料可匯入 / 匯出 Excel">
+<meta name="theme-color" content="#1f3864">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="台股指標">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{
+  --bg:#f5f6f8; --panel:#fff; --ink:#18202b; --ink2:#4a5566; --muted:#7a8494; --rule:#e1e5eb; --grid:#eceff3;
+  --series:#2f5fa7; --series2:#c07a12; --area:rgba(47,95,167,.10); --btn:#1f3864; --btnink:#fff; --btnfill:rgba(255,255,255,.22);
+  --up:#c8262f; --down:#16804a; --upbg:rgba(200,38,47,.09); --downbg:rgba(22,128,74,.10); --warn:#9a5b00; --new:#6b3fa0; --newbg:rgba(107,63,160,.10);
+  --f-body:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif; --f-num:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10141a; --panel:#171c24; --ink:#e8ecf2; --ink2:#b3bccb; --muted:#8892a3; --rule:#2a313c; --grid:#232a34;
+  --series:#7aa7ea; --series2:#e3a446; --area:rgba(122,167,234,.14); --btn:#7aa7ea; --btnink:#0d1520; --btnfill:rgba(13,21,32,.25);
+  --up:#ff6b70; --down:#4cc38a; --upbg:rgba(255,107,112,.13); --downbg:rgba(76,195,138,.13); --warn:#f0b35a; --new:#c3a0f0; --newbg:rgba(195,160,240,.14); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10141a; --panel:#171c24; --ink:#e8ecf2; --ink2:#b3bccb; --muted:#8892a3; --rule:#2a313c; --grid:#232a34;
+  --series:#7aa7ea; --series2:#e3a446; --area:rgba(122,167,234,.14); --btn:#7aa7ea; --btnink:#0d1520; --btnfill:rgba(13,21,32,.25);
+  --up:#ff6b70; --down:#4cc38a; --upbg:rgba(255,107,112,.13); --downbg:rgba(76,195,138,.13); --warn:#f0b35a; --new:#c3a0f0; --newbg:rgba(195,160,240,.14); color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);line-height:1.5}
+[hidden]{display:none!important}
+.wrap{max-width:1260px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px 24px;border-bottom:1px solid var(--rule);padding-bottom:16px;margin-bottom:16px}
+header .t{min-width:0}
+h1{font-size:1.55rem;font-weight:700;margin:0;text-wrap:balance}
+.sub{color:var(--ink2);margin:4px 0 0;font-size:.88rem;max-width:72ch}
+.side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}
+.stamp{font-family:var(--f-num);font-size:.76rem;color:var(--muted);text-align:right;white-space:nowrap}
+/* update button: spinner + progress fill + moving sheen while busy */
+button.update{position:relative;overflow:hidden;font:600 .92rem var(--f-body);background:var(--btn);color:var(--btnink);border:0;border-radius:8px;
+  padding:10px 18px;cursor:pointer;display:inline-flex;align-items:center;gap:9px;min-width:158px;justify-content:center}
+button.update:hover{filter:brightness(1.08)} button.update:focus-visible{outline:2px solid var(--series);outline-offset:3px}
+button.update[aria-busy="true"]{cursor:progress}
+button.update .fill{position:absolute;inset:0 auto 0 0;width:0;background:var(--btnfill);transition:width .35s ease}
+button.update[aria-busy="true"] .fill{background-image:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.28) 50%,transparent 70%);background-size:200% 100%;animation:sheen 1.2s linear infinite}
+button.update > span{position:relative}
+.spin{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .75s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@keyframes sheen{from{background-position:200% 0}to{background-position:-200% 0}}
+@media (prefers-reduced-motion: reduce){.spin{animation-duration:2s}button.update .fill{animation:none}}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.85rem;color:var(--ink2)}
+.panel h2{font-size:.95rem;margin:0 0 4px;color:var(--ink)}
+.panel ul{margin:4px 0;padding-left:20px}
+.log{font-family:var(--f-num);font-size:.74rem;max-height:180px;overflow:auto;white-space:pre-wrap;margin:6px 0 0;color:var(--muted)}
+.log .bad{color:var(--up)} .log .w{color:var(--warn)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.78rem;color:var(--muted);margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:14px 16px 10px;min-width:0;display:flex;flex-direction:column;gap:6px}
+.card.isnew{border-color:var(--new);box-shadow:0 0 0 1px var(--new) inset}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.top > div{min-width:0}
+.name{font-weight:700;font-size:1rem;margin:0}
+.badge{display:inline-block;font-size:.68rem;font-weight:500;padding:0 6px;border-radius:4px;margin-left:6px;vertical-align:2px}
+.badge.n{background:var(--newbg);color:var(--new)} .badge.u{background:var(--grid);color:var(--ink2)}
+.metric{font-size:.74rem;color:var(--muted)}
+.lastv{text-align:right}
+.last{font-family:var(--f-num);font-size:1.2rem;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+.chg{font-family:var(--f-num);font-size:.8rem;white-space:nowrap}
+.chg.up{color:var(--up)} .chg.down{color:var(--down)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-family:var(--f-num);font-size:.74rem;padding:2px 8px;border-radius:999px;background:var(--grid);color:var(--ink2);font-variant-numeric:tabular-nums}
+.chip.up{background:var(--upbg);color:var(--up)} .chip.down{background:var(--downbg);color:var(--down)}
+.chip b{font-family:var(--f-body);font-weight:500;margin-right:4px}
+svg.ch{display:block;width:100%;height:auto;overflow:visible}
+svg.ch text{font-family:var(--f-num);font-size:10.5px;fill:var(--muted)}
+svg.ch .lbl{fill:var(--ink);font-weight:500}
+.empty{display:flex;align-items:center;justify-content:center;min-height:150px;border:1px dashed var(--rule);border-radius:6px;color:var(--muted);font-size:.8rem;text-align:center;padding:12px}
+.src{font-size:.72rem;color:var(--muted);border-top:1px solid var(--rule);padding-top:6px;overflow-wrap:anywhere}
+.src a{color:var(--series);text-decoration:none} .src a:hover{text-decoration:underline}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-family:var(--f-num);font-size:.74rem;padding:5px 8px;border-radius:4px;white-space:nowrap;z-index:20}
+footer{margin-top:24px;font-size:.76rem;color:var(--muted);max-width:95ch}
+footer p{margin:4px 0}
+@media (max-width:640px){header{flex-direction:column}.side{align-items:stretch;width:100%}.stamp{text-align:left}}
+
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);-webkit-text-size-adjust:100%}
+.btns{display:flex;gap:8px;align-items:center}
+button.ghost{font:500 .9rem var(--f-body);background:var(--panel);color:var(--ink);border:1px solid var(--rule);border-radius:8px;padding:9px 14px;cursor:pointer;min-height:42px}
+button.ghost:focus-visible{outline:2px solid var(--series);outline-offset:3px}
+button.update{min-height:42px;touch-action:manipulation}
+.menu{background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:14px 16px;margin-bottom:16px;display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
+.menu h3{font-size:.9rem;margin:0 0 6px}
+.menu p{font-size:.78rem;color:var(--muted);margin:0 0 8px}
+.menu .row{display:flex;gap:8px;flex-wrap:wrap}
+.menu input{font:16px var(--f-body);padding:8px 10px;border:1px solid var(--rule);border-radius:6px;background:var(--bg);color:var(--ink);min-width:0;flex:1 1 140px}
+.menu ul{list-style:none;margin:0;padding:0;max-height:220px;overflow:auto;font-size:.82rem}
+.menu li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--grid)}
+.menu li button{font:.75rem var(--f-body);background:none;border:1px solid var(--rule);color:var(--ink2);border-radius:6px;padding:3px 8px;cursor:pointer}
+.offline{font-size:.74rem;color:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="t">
+    <h1>台股風險指標 5日變化</h1>
+    <p class="sub" id="sub">載入中…</p>
+  </div>
+  <div class="side">
+    <div class="btns">
+      <button class="ghost" id="menuBtn" type="button" aria-expanded="false" aria-controls="menu">資料 ▾</button>
+      <button class="update" id="btn" type="button" aria-busy="false" aria-live="polite">
+        <span class="fill" id="fill"></span>
+        <span class="spin" id="spin" hidden></span>
+        <span id="btnTxt">檢查更新</span>
+      </button>
+    </div>
+    <div class="stamp" id="stamp"></div>
+    <div class="offline" id="offline" hidden>目前離線：顯示已儲存的資料</div>
+  </div>
+</header>
+
+<section class="menu" id="menu" hidden>
+  <div>
+    <h3>Excel 匯入 / 匯出</h3>
+    <p>匯入：從「檔案」App（iCloud 雲碟、OneDrive…）選 index_base.xlsx，Sheet1 的新指標與手動輸入的資料會併入。匯出：產生最新的 index_base.xlsx，可存到「檔案」或傳回電腦。</p>
+    <div class="row">
+      <button class="ghost" id="impBtn" type="button">匯入 Excel</button>
+      <button class="ghost" id="expBtn" type="button">匯出 Excel</button>
+      <input type="file" id="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+    </div>
+  </div>
+  <div>
+    <h3>新增指標</h3>
+    <p>輸入名稱（例：日經225、道瓊、S&amp;P 500、恒生、上證、美元指數、USD/JPY、櫃買指數、台積電 2330）。無法辨識時可填鉅亨網代碼（例 GI:NKY:INDEX）或台股代號。</p>
+    <div class="row">
+      <input id="newName" placeholder="指標名稱" autocomplete="off">
+      <input id="newSrc" placeholder="代碼（選填）" autocomplete="off" autocapitalize="characters">
+      <button class="ghost" id="addBtn" type="button">新增並更新</button>
+    </div>
+  </div>
+  <div>
+    <h3>指標清單</h3>
+    <ul id="listUl"></ul>
+  </div>
+</section>
+
+<section class="panel" id="panel" hidden aria-live="polite">
+  <h2 id="pTitle"></h2>
+  <div id="pBody"></div>
+  <div class="log" id="log"></div>
+</section>
+<div class="legend"><span>— 線圖：首點為基準日，其後為最近 5 個交易日</span><span>▮ 柱狀：最近 5 日 / 5 個月</span><span>右上角：最新值與 5 日變化</span><span>紅漲綠跌</span></div>
+<main class="grid" id="grid"></main>
+<footer>
+  <p><b>檢查更新</b>：依「指標清單」逐項從最後一筆日期抓到今天，新資料附加後重繪圖表，並儲存在本機。新指標（從 Excel 匯入或在「資料」選單新增）會自動建立圖表。</p>
+  <p>資料來源：臺灣證券交易所、臺灣期貨交易所（經 FinMind API）、鉅亨網、美國財政部、經濟部統計處；每張圖下方附來源連結。月資料（外銷訂單、工業生產）需在 Excel 手動新增後匯入。本益比 = 收盤指數 ÷ EPS 錨定值（Excel「台股本益比」工作表 B 欄）。</p>
+  <p>資料存在這台 iPad 的 App 內；定期「匯出 Excel」可備份，也能帶回電腦使用。</p>
+</footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script src="exceljs.min.js"></script>
+<script src="engine.js"></script>
+<script>
+(function(){
+'use strict';
+const E=window.ENGINE;
+const $=id=>document.getElementById(id);
+const grid=$('grid'), tip=$('tip'), btn=$('btn');
+const fmt=(v,d=2)=>v==null||!isFinite(v)?'–':Number(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const sgn=(v,d=2,suf='')=>v==null||!isFinite(v)?'–':(v>0?'+':v<0?'−':'')+fmt(Math.abs(v),d)+suf;
+const cls=v=>v==null||!isFinite(v)||v===0?'':(v>0?'up':'down');
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- chart (inline SVG) ---------- */
+function niceTicks(min,max,n=4){const span=max-min||Math.abs(max)||1;const step0=span/n;const mag=Math.pow(10,Math.floor(Math.log10(step0)));
+  const step=[1,2,2.5,5,10].map(m=>m*mag).find(s=>s>=step0)||10*mag;const lo=Math.floor(min/step)*step,hi=Math.ceil(max/step)*step;const t=[];for(let v=lo;v<=hi+step/2;v+=step)t.push(+v.toFixed(10));return t;}
+function chart(c){
+  const W=360,H=170,ml=52,mr=14,mt=18,mb=26,iw=W-ml-mr,ih=H-mt-mb;
+  const vals=c.values.filter(v=>v!=null), v2=(c.values2||[]).filter(v=>v!=null);
+  if(!vals.length) return `<div class="empty">${c.manual?'尚無資料：請在「資料」選單以鉅亨網代碼 / 台股代號重新新增，或在 Excel「'+esc(c.key)+'」工作表輸入資料後匯入':'資料不足'}</div>`;
+  let lo=Math.min(...vals,...v2), hi=Math.max(...vals,...v2);
+  if(c.bar){lo=Math.min(0,lo);hi=Math.max(0,hi);}
+  if(c.range){lo=Math.min(c.range[0],lo);hi=Math.max(c.range[1],hi);}
+  const pad=(hi-lo)*0.12||Math.abs(hi)*0.02||1; if(!c.range){ if(!c.bar||lo<0) lo-=pad; hi+=pad; }
+  const ticks=c.range?[0,20,50,80,100].filter(t=>t>=lo&&t<=hi):niceTicks(lo,hi);
+  lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);
+  const span=Math.abs(hi-lo), td=span<1?3:span<5?2:span<50?1:0;
+  const n=c.values.length, X=i=>ml+(n===1?iw/2:(c.bar?(i+0.5)*iw/n:i*iw/(n-1))), Y=v=>mt+ih-(v-lo)/(hi-lo)*ih;
+  let s=`<svg class="ch" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(c.title)} 最近 5 日數值圖">`;
+  for(const t of ticks){s+=`<line x1="${ml}" x2="${W-mr}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--grid)"/><text x="${ml-6}" y="${Y(t)+3.5}" text-anchor="end">${fmt(t,td)}</text>`;}
+  (c.guides||[]).forEach(g=>{if(g>lo&&g<hi)s+=`<line x1="${ml}" x2="${W-mr}" y1="${Y(g)}" y2="${Y(g)}" stroke="var(--muted)" stroke-dasharray="3 3" opacity=".6"/>`;});
+  if(c.bar){ const bw=Math.min(34,iw/n*0.6); if(lo<0)s+=`<line x1="${ml}" x2="${W-mr}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)"/>`;
+    c.values.forEach((v,i)=>{if(v==null)return;const y0=Y(Math.max(0,lo)),y=Y(v);const col=c.neutral?'var(--series)':(v>=0?'var(--up)':'var(--down)');
+      s+=`<rect x="${X(i)-bw/2}" y="${Math.min(y,y0)}" width="${bw}" height="${Math.max(1,Math.abs(y0-y))}" rx="2" fill="${col}" opacity=".85"/>`;
+      s+=`<text class="lbl" x="${X(i)}" y="${v>=0?Math.min(y,y0)-4:Math.max(y,y0)+11}" text-anchor="middle">${fmt(v,c.dec>1?1:c.dec)}</text>`;});
+  } else {
+    const pts=c.values.map((v,i)=>v==null?null:[X(i),Y(v)]).filter(Boolean);
+    if(!c.kind) s+=`<path d="M${pts.map(p=>p.join(',')).join('L')}L${pts[pts.length-1][0]},${mt+ih}L${pts[0][0]},${mt+ih}Z" fill="var(--area)"/>`;
+    s+=`<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="var(--series)" stroke-width="2.2" stroke-linejoin="round"/>`;
+    pts.forEach((p,i)=>{s+=`<circle cx="${p[0]}" cy="${p[1]}" r="${i===pts.length-1?4:2.6}" fill="${i===pts.length-1?'var(--series)':'var(--panel)'}" stroke="var(--series)" stroke-width="1.6"/>`;});
+    const li=pts.length-1; s+=`<text class="lbl" x="${pts[li][0]}" y="${pts[li][1]-8}" text-anchor="end">${fmt(c.values[c.values.length-1],c.dec)}</text>`;
+    if(li>0) s+=`<text x="${pts[0][0]}" y="${pts[0][1]-8}" text-anchor="start">${fmt(c.values[0],c.dec)}</text>`;
+  }
+  if(c.values2){const p2=c.values2.map((v,i)=>v==null?null:[X(i),Y(v)]).filter(Boolean);
+    if(p2.length)s+=`<polyline points="${p2.map(p=>p.join(',')).join(' ')}" fill="none" stroke="var(--series2)" stroke-width="2" stroke-dasharray="${c.bar?'4 3':'0'}"/>`+p2.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="2.4" fill="var(--series2)"/>`).join('');}
+  c.dates.forEach((d,i)=>{s+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle">${c.monthly?String(d).slice(2).replace('-','/'):String(d).slice(5).replace('-','/')}</text>`;
+    s+=`<rect class="hit" data-i="${i}" x="${X(i)-iw/n/2}" y="${mt}" width="${iw/n}" height="${ih}" fill="transparent"/>`;});
+  return s+'</svg>';
+}
+function chipHtml([lab,v,kind]){
+  if(kind==='txt') return `<span class="chip ${/黃金|多方/.test(v||'')?'up':/死亡|空方/.test(v||'')?'down':''}"><b>${esc(lab)}</b>${esc(v||'–')}</span>`;
+  if(v==null) return `<span class="chip"><b>${esc(lab)}</b>–</span>`;
+  const t={'%':sgn(v,2,'%'),'%u':fmt(v,1)+'%','bp':sgn(v,0,' bp'),'x':fmt(v,2)+'x','pt':sgn(v,2,' pt'),'億':sgn(v,1,' 億'),'口':sgn(v,0,' 口'),'lvl':fmt(v,2),'':fmt(v,2)}[kind];
+  const c=['%','bp','pt','億','口'].includes(kind)?cls(v):'';
+  return `<span class="chip ${c}"><b>${esc(lab)}</b>${t}</span>`;
+}
+function headline(c){
+  const v=c.values, last=v[v.length-1];
+  if(last==null) return ['–','',''];
+  if(c.five){
+    if(c.label==='買賣超(億)'){const s=v.reduce((a,b)=>a+(b||0),0);return [sgn(last,1)+' 億', `5日合計 ${sgn(s,0,' 億')}`, cls(s)];}
+    if(c.neutral) return [fmt(last,0)+' 億', `20日均量 ${fmt((c.values2||[]).slice(-1)[0],0)} 億`, ''];
+    const d=v.length>1?last-v[v.length-2]:null; return [sgn(last,c.dec,'%'), `較前月 ${sgn(d,c.dec,' pt')}`, cls(d)];
+  }
+  const base=v[0], d=last-base, p=base?d/Math.abs(base)*100:null;
+  if(c.unit==='%') return [fmt(last,2)+'%', `5日 ${sgn(d*100,0,' bp')}`, cls(d)];
+  if(c.kind==='osc') return [fmt(last,1), `5日 ${sgn(d,1)}`, cls(d)];
+  if(c.unit==='口') return [sgn(last,0)+' 口', `5日 ${sgn(d,0,' 口')}`, cls(d)];
+  return [fmt(last,c.dec)+(c.unit==='億元'?' 億':''), `5日 ${sgn(d,c.dec)} (${sgn(p,2,'%')})`, cls(d)];
+}
+
+
+/* ---------- local storage (IndexedDB) ---------- */
+const idb=(mode,fn)=>new Promise((res,rej)=>{let r;try{r=indexedDB.open('tw-index-app',1);}catch(e){return rej(e);}
+  r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onerror=()=>rej(r.error);
+  r.onsuccess=()=>{try{const tx=r.result.transaction('kv',mode);const q=fn(tx.objectStore('kv'));tx.oncomplete=()=>res(q&&q.result);tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error);}catch(e){rej(e);}};});
+const load=k=>idb('readonly',s=>s.get(k)).catch(()=>undefined);
+const save=(k,v)=>idb('readwrite',s=>s.put(v,k));
+// state: {list:[{name,freq,note,source}], sheets:{key:{raw,meta}}, generated}
+let ST=null;
+
+/* ---------- workbook <-> state ---------- */
+function mergeRaw(oldRaw,newRaw,n){const m=new Map();(oldRaw||[]).forEach(r=>m.set(String(r[0]),r.slice(0,n)));
+  (newRaw||[]).forEach(r=>{const o=m.get(String(r[0]));const x=r.slice(0,n);if(o)x.forEach((v,i)=>{if(v==null&&o[i]!=null)x[i]=o[i];});m.set(String(r[0]),x);});
+  return [...m.keys()].sort().map(k=>m.get(k));}
+async function importWorkbook(buf,keepExisting){
+  const wb=new ExcelJS.Workbook(); await wb.xlsx.load(buf);
+  const list=E.readIndexList(wb); if(!list.length) throw new Error('Sheet1 沒有找到任何指標（A 欄）');
+  const prev=ST||{list:[],sheets:{}}; const sheets={};
+  const prevKeys=new Set(prev.list.map(r=>E.sheetName(r.name)));
+  const added=[];
+  for(const row of list){const s=E.specFor(row); const d=E.readSheet(wb.getWorksheet(s.sheet),s); const o=prev.sheets[s.key]||{raw:[],meta:{}};
+    if(keepExisting&&!prevKeys.has(s.key)) added.push(s.key);
+    sheets[s.key]={raw:mergeRaw(o.raw,d.raw,s.raw.length),meta:Object.assign({},o.meta,pickMeta(s,d.meta))};}
+  const firstMeta=E.readSheet(wb.getWorksheet(E.specFor(list[0]).sheet),E.specFor(list[0])).meta;
+  ST={list,sheets,generated:prev.generated||String(firstMeta['最後更新']||'—')};
+  await save('state',ST); await save('base',buf);
+  return {added,count:list.length};
+}
+const pickMeta=(s,m)=>{const o={};(s.meta||[]).forEach(k=>{if(m[k]!=null)o[k]=m[k];});return o;};
+function table(s){const st=ST.sheets[s.key]||{raw:[],meta:{}};return E.build(s,[],st.raw,st.meta);}
+
+/* ---------- render ---------- */
+function render(flags={}){
+  const specs=ST.list.map(E.specFor);
+  grid.innerHTML='';
+  specs.forEach(s=>{
+    const c=E.summary(s,table(s));
+    const [lv,ch,cl]=headline(c); const f=flags[c.key];
+    const el=document.createElement('article'); el.className='card'+(f==='new'?' isnew':'');
+    const badge=f==='new'?'<span class="badge n">新增</span>':typeof f==='number'&&f>0?`<span class="badge u">+${f} 筆</span>`:'';
+    el.innerHTML=`<div class="top"><div><h2 class="name">${esc(c.name||c.title)}${badge}</h2><div class="metric">${esc(c.title)}${c.note?' · '+esc(c.note):''}${c.unit&&!['%',''].includes(c.unit)?' · '+esc(c.unit):''}${c.label2?` · <span style="color:var(--series)">━ ${esc(c.label)}</span> <span style="color:var(--series2)">━ ${esc(c.label2)}</span>`:''}</div></div>
+      <div class="lastv"><div class="last">${lv}</div><div class="chg ${cl}">${ch}</div></div></div>
+      ${chart(c)}<div class="chips">${c.chips.map(chipHtml).join('')}</div>
+      <div class="src">資料至 ${esc(c.lastDate||'–')}${c.links.length?' ・ 來源：'+c.links.map(([t,u])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a>`).join('、'):' ・ 尚未設定資料來源'}</div>`;
+    el.querySelectorAll('.hit').forEach(h=>{
+      const i=+h.dataset.i;
+      const showTip=e=>{tip.hidden=false;tip.textContent=`${c.dates[i]}  ${c.label}: ${fmt(c.values[i],c.dec)}${c.values2?`  ${c.label2}: ${fmt(c.values2[i],c.dec)}`:''}`;
+        tip.style.left=Math.max(8,Math.min(e.clientX+12,innerWidth-tip.offsetWidth-8))+'px';tip.style.top=(e.clientY-36)+'px';};
+      h.addEventListener('pointermove',showTip); h.addEventListener('pointerdown',showTip);
+      h.addEventListener('pointerleave',()=>{tip.hidden=true;});
+    });
+    grid.appendChild(el);
+  });
+  $('stamp').textContent='資料更新：'+ST.generated;
+  $('sub').textContent=`共 ${specs.length} 項指標，每項一圖。日資料顯示基準日與最近 5 個交易日；月資料顯示最近 5 個月。`;
+  $('listUl').innerHTML=ST.list.map((r,i)=>`<li><span>${esc(r.name)}${r.source?' <small>('+esc(r.source)+')</small>':''}</span><button type="button" data-i="${i}">移除</button></li>`).join('');
+}
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('.hit'))tip.hidden=true;});
+
+/* ---------- progress UI ---------- */
+const panel=$('panel'), logEl=$('log'); let logLines=[], done=0, total=1, running=false;
+function log(m,k){logLines.push([m,k||'']);logEl.innerHTML=logLines.map(([t,c])=>`<div class="${c}">${esc(t)}</div>`).join('');logEl.scrollTop=logEl.scrollHeight;}
+function prog(){const p=Math.min(97,Math.round(done/total*100));$('fill').style.width=p+'%';$('btnTxt').textContent=`更新中 ${p}%`;}
+function busy(on){running=on;btn.setAttribute('aria-busy',on);btn.disabled=on;$('spin').hidden=!on;if(!on){$('fill').style.width='0';$('btnTxt').textContent='檢查更新';}}
+function show(title,body){panel.hidden=false;$('pTitle').textContent=title;$('pBody').innerHTML=body||'';}
+
+/* ---------- update: fetch new dates for every index ---------- */
+async function update(newKeys=[]){
+  if(running) return;
+  if(!navigator.onLine){show('目前沒有網路','請連上網路後再按「檢查更新」。');return;}
+  logLines=[];logEl.innerHTML='';done=0;total=1;busy(true);prog();
+  show('正在檢查更新…','從各指標的最後日期抓取到今天。');
+  try{
+    const specs=ST.list.map(E.specFor);
+    const last={}; specs.forEach(s=>{const r=(ST.sheets[s.key]||{raw:[]}).raw;last[s.key]=r.length?r[r.length-1][0]:null;});
+    const pe=specs.find(s=>s.meta&&s.meta.includes('EPS 錨定值'));
+    if(pe){const st=ST.sheets[pe.key]=ST.sheets[pe.key]||{raw:[],meta:{}};if(!st.meta['EPS 錨定值'])st.meta['EPS 錨定值']=1796.08;}
+    const daily=specs.filter(s=>!s.monthly);
+    const today=E.ymd(new Date());
+    total=E.plan(daily,last,today).total+1; done=0; prog();
+    const warns=[];
+    const raw=await E.fetchAll(daily,last,today,m=>{done++;prog();if(m)log(m);},m=>{warns.push(m);log('警告：'+m,'w');});
+    const flags={}; const upd=[];
+    for(const s of specs){
+      const st=ST.sheets[s.key]=ST.sheets[s.key]||{raw:[],meta:{}};
+      const before=st.raw.length; st.raw=mergeRaw(st.raw,raw[s.key]||[],s.raw.length);
+      const n=st.raw.length-before; flags[s.key]=newKeys.includes(s.key)?'new':n; if(n>0)upd.push(`${s.name} +${n}`);
+    }
+    ST.generated=new Date().toLocaleString('zh-TW',{hour12:false});
+    await save('state',ST); render(flags);
+    $('fill').style.width='100%';
+    show(warns.length?`更新完成，${warns.length} 項來源未取得（保留原資料）`:(upd.length||newKeys.length?'更新完成':'已是最新資料'),
+      `<ul>${newKeys.length?`<li>新增圖表：${newKeys.map(esc).join('、')}</li>`:''}<li>${upd.length?'新資料列：'+upd.map(esc).join('、'):'沒有新的日期資料'}</li><li>已儲存在本機；需要時可從「資料」選單匯出 Excel</li></ul>`);
+  }catch(e){show('更新失敗',esc(e.message));log('錯誤：'+e.message,'bad');}
+  finally{setTimeout(()=>busy(false),500);}
+}
+
+/* ---------- export / import ---------- */
+async function exportXlsx(){
+  if(running) return;
+  try{
+    show('正在產生 Excel…','');
+    const wb=new ExcelJS.Workbook(); const base=await load('base');
+    if(base) await wb.xlsx.load(base);
+    let s1=wb.getWorksheet('Sheet1'); if(!s1){s1=wb.addWorksheet('Sheet1');s1.addRow(['Index','Frequency','Note','Source 代碼(選填)']);}
+    // Sheet1 = current list (keeps existing rows; appends indices added in the app; drops removed ones)
+    const want=ST.list, have=E.readIndexList(wb).map(r=>E.sheetName(r.name));
+    const keep=new Set(want.map(r=>E.sheetName(r.name)));
+    for(let i=s1.rowCount;i>=2;i--){const v=s1.getRow(i).getCell(1).value;if(v!=null&&String(v).trim()&&!keep.has(E.sheetName(String(v).trim()))) s1.spliceRows(i,1);}
+    want.forEach(r=>{if(!have.includes(E.sheetName(r.name))) s1.addRow([r.name,r.freq||'Day',r.note||'',r.source||'']);});
+    if(!s1.getCell('D1').value) s1.getCell('D1').value='Source 代碼(選填)';
+    const stamp=ST.generated;
+    for(const s of want.map(E.specFor)){const st=ST.sheets[s.key]||{raw:[],meta:{}};E.writeSheet(wb,s,E.build(s,[],st.raw,st.meta),st.meta,stamp);}
+    const buf=await wb.xlsx.writeBuffer(); await save('base',buf);
+    const file=new File([buf],'index_base.xlsx',{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      try{await navigator.share({files:[file],title:'index_base.xlsx'});show('已匯出 Excel','可選「儲存到檔案」存到 iCloud 雲碟或 OneDrive，或用 AirDrop / 郵件傳回電腦。');return;}
+      catch(e){if(e.name==='AbortError'){panel.hidden=true;return;}}
+    }
+    const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download='index_base.xlsx';document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);
+    show('已匯出 Excel','檔案已下載（iPad：「檔案」App →「下載項目」）。');
+  }catch(e){show('匯出失敗',esc(e.message));}
+}
+$('expBtn').onclick=exportXlsx;
+$('impBtn').onclick=()=>$('file').click();
+$('file').onchange=async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  try{const r=await importWorkbook(await f.arrayBuffer(),true);render();
+    show('已匯入 '+f.name,`共 ${r.count} 項指標${r.added.length?'，新增：'+r.added.map(esc).join('、'):''}。`);
+    if(r.added.length||navigator.onLine) update(r.added);
+  }catch(err){show('匯入失敗',esc(err.message));}
+};
+$('addBtn').onclick=()=>{
+  const name=$('newName').value.trim(), source=$('newSrc').value.trim(); if(!name){$('newName').focus();return;}
+  const key=E.sheetName(name); if(ST.list.some(r=>E.sheetName(r.name)===key)){show('指標已存在',esc(name));return;}
+  ST.list.push({name,freq:'Day',note:'',source}); $('newName').value='';$('newSrc').value='';
+  const s=E.specFor({name,source}); render({[key]:'new'});
+  if(!s.src) show('已新增「'+esc(name)+'」','未能自動辨識資料來源；請填入鉅亨網代碼或台股代號後重新新增，或在 Excel 手動輸入資料再匯入。');
+  save('state',ST).then(()=>{if(s.src) update([key]);});
+};
+$('listUl').onclick=e=>{const b=e.target.closest('button[data-i]');if(!b)return;const r=ST.list[+b.dataset.i];
+  if(!confirm(`移除「${r.name}」的圖表？（已抓的資料保留，可再新增回來）`))return;ST.list.splice(+b.dataset.i,1);save('state',ST);render();};
+$('menuBtn').onclick=()=>{const m=$('menu');m.hidden=!m.hidden;$('menuBtn').setAttribute('aria-expanded',String(!m.hidden));};
+btn.onclick=()=>update();
+const net=()=>{$('offline').hidden=navigator.onLine;}; addEventListener('online',net); addEventListener('offline',net); net();
+
+/* ---------- start ---------- */
+(async()=>{
+  try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+  ST=await load('state');
+  if(!ST){ // first launch: seed from the bundled workbook
+    try{const buf=await (await fetch('base.xlsx')).arrayBuffer();await importWorkbook(buf,false);}
+    catch(e){$('sub').textContent='無法載入內建資料：'+e.message;return;}
+  }
+  render();
+})();
+if('serviceWorker' in navigator) addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+})();
+</script>
+</body>
+</html>
